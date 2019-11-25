@@ -1,21 +1,37 @@
 import socket
 import pickle
+from time import sleep
 from threading import Thread
 
 IP = '127.0.0.1'
 PORT = 1234
-my_username = input('Username: ')
+my_username = ''
+
+while my_username == '':
+    my_username = input('User name: ')
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((IP, PORT))
+
+#Enviando o nome de usuário para o servidor
+client.send(bytes(f'{my_username}', 'utf-8'))
+
+#Verificando se o nome de usuário é valido
+checking = True
+while checking:
+    msg = client.recv(1024).decode('utf-8')
+    print(msg)
+    if msg == 'ACCEPT':
+        checking = False
+    else:
+        my_username = input('User name: ')
+        client.send(bytes(f'{my_username}', 'utf-8'))
+
 
 #Recebendo menssagem de boas vindas do servidor
 welcome = client.recv(1024)
 welcome = pickle.loads(welcome)
 print(f'{welcome["FROM"]} says: {welcome["MSG"]}')
-
-#Enviando o nome de usuário para o servidor
-client.send(bytes(f'{my_username}', 'utf-8'))
 
 wait_to_send = 0
 wait_to_receive = 0
@@ -32,13 +48,16 @@ def send():
     sub = input('Subject > ')
 
     while msg == '':
-        msg = input(f'{my_username} > ')
+        msg = input('Message > ')
 
     msg_to_send = {"TO": f'{to}', "FROM": f'{my_username}', "SUB": f'{sub}', "MSG": f'{msg}'}
     msg_to_send = pickle.dumps(msg_to_send)
     client.send(msg_to_send)
+    sleep(1)
     global wait_to_send
     wait_to_send = 0
+    print('\n')
+
 
 
 #Função responsável por receber a menssagem

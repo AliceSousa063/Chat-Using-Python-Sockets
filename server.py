@@ -29,12 +29,22 @@ clients = []
 
 def msg_manager(clientsocket):
     while True:
-        msg = clientsocket.recv(1024)
-        msg = pickle.loads(msg)
+        msg = clientsocket.recv(2048)
+        msg = dict(pickle.loads(msg))
         print(msg)
 
         for send in clients:
-            if send[1] == msg["TO"]:
+            # print(f'msg = {msg["FROM"]}')
+            # print(f'send[1] = {send[1]}')
+            #Caso o usuário envie para ele mesmo ou para algum usuário inexistente
+            if send[1] == msg["FROM"]:
+                print('a')
+                msg = {"FROM": 'SERVER', "SUB": 'ERRORR!!!', "MSG": 'You are sending to yourself or recipient does not exist!!!'}
+                msg = pickle.dumps(msg)
+                clientsocket.send(msg)
+
+            if send[1] in msg["TO"]:
+                print('b')
                 msg = pickle.dumps(msg)
                 send[0].send(msg)
 
@@ -43,6 +53,21 @@ def new_connection():
 
     #Conectando um novo cliente ao servidor
     clientsocket, address = server.accept()
+
+    #Testando caso o nome de usuário ja esteja sendo usado
+    existing_user = True
+    client_name = ''
+    while existing_user:
+        client_name = clientsocket.recv(32).decode('utf-8')  #Recebendo o nome de usuário do cliente
+        if len(clients) == 0:
+            existing_user = False
+        else:
+            for name in clients:
+                if name[1] == client_name:
+                    clientsocket.send(bytes('FAILED', 'utf-8'))
+                else:
+                    existing_user = False
+    clientsocket.send(bytes('ACCEPT', 'utf-8'))
 
     global num_conections
     num_conections += 1
@@ -53,8 +78,8 @@ def new_connection():
     msg = pickle.dumps(msg) #Transformando o dicionário em string
     clientsocket.send(msg)
 
-    client_name = clientsocket.recv(32).decode('utf-8') #Recebendo o nome de usuário do cliente
     clients.append((clientsocket, client_name)) #Salvando o socket do cliente e o nome de usuário
+    print(clients)
     msg_manager(clientsocket)
 
 
